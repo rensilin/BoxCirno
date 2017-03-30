@@ -18,7 +18,6 @@
 #include <QMenuBar>
 #include <QMenu>
 #include "Game.h"
-#include "Vector.h"
 #include <QThread>
 #include <QMutex>
 #include <QMutexLocker>
@@ -31,7 +30,7 @@ public:
     MainWindow(QWidget *parent = 0);
     void paintEvent(QPaintEvent *);
     void keyPressEvent(QKeyEvent *e);
-    void timerEvent(QTimerEvent *);
+    void mousePressEvent(QMouseEvent *event);
     ~MainWindow();
     friend class Game;
     QMutex mutex;
@@ -47,16 +46,19 @@ private:
     QPushButton *nextBtn;
     QPushButton *restartBtn;
     QPushButton *preBtn;
+    QPushButton *goBackBtn;
     QMenu *menu;
     int round;
     int cnt;
     int timerId;
-    Vector<int> showAns;
-    Vector<int>::iterator showAnsIt;
+    vector<int> showAns;
+    vector<int>::iterator showAnsIt;
     Game *game;
     void checkGame();
     bool loadGame();
     bool loadGame(QString filename, QString);
+    void nextStep();
+    void preStep();
 private slots:
     void onNextBtnClicked();
     void onRestartBtnClicked();
@@ -64,6 +66,7 @@ private slots:
     void onActionClicked();
     void showHelpInformation();
     void showAboutInformation();
+    void onGoBackBtnClicked();
 };
 
 #endif // MAINWINDOW_H

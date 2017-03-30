@@ -1,8 +1,7 @@
 #ifndef STATUS_H
 #define STATUS_H
+#include <set>
 #include "Point.h"
-#include "TreeSet.h"
-#include "Vector.h"
 #include "Game.h"
 #include "KM.h"
 
@@ -11,11 +10,11 @@
 class Status
 {
 public:
-	Vector<Point> *aim;
+    vector<Point> *aim;
     int g;
     int h;
     int pre;
-    TreeSet<Point> box;
+    set<Point> box;
     Point man;
     Status()
     {
@@ -27,18 +26,18 @@ public:
     	man=o.man;
     	pre=o.pre;
     	aim=o.aim;
-    	for(TreeSet<Point>::iterator i=o.box.begin();i!=o.box.end();i++)box.push(*i);
+        for(set<Point>::iterator i=o.box.begin();i!=o.box.end();i++)box.insert(*i);
     }
     void solveH()
     {
-    	KM km(aim->getLength());
-		TreeSet<Point>::iterator it;
+        KM km(aim->size());
+        set<Point>::iterator it;
 		int i;
 		h=INF;
     	for(it=box.begin(),i=0;it!=box.end();it++,i++)
     	{
     		h=min(h,man-*it-1);
-    		for(int j=0;j<aim->getLength();j++)
+            for(unsigned int j=0;j<aim->size();j++)
     		    km.add_edge(i,j,-(*it-((*aim)[j])));
     	}
     	h+=-km.solve();
@@ -52,14 +51,14 @@ public:
     	pre=o.pre;
     	aim=o.aim;
     	box.clear();
-    	for(TreeSet<Point>::iterator i=o.box.begin();i!=o.box.end();i++)box.push(*i);
+        for(set<Point>::iterator i=o.box.begin();i!=o.box.end();i++)box.insert(*i);
     }
     bool operator<(const Status &o)const
     {
     	if(h==-1)
     	{
     		if(man!=o.man)return man<o.man;
-    		TreeSet<Point>::iterator i=box.begin(),j=o.box.begin();
+            set<Point>::iterator i=box.begin(),j=o.box.begin();
     		while(i!=box.end())
     		{
     		    if(*i!=*j)return *i<*j;
@@ -69,12 +68,16 @@ public:
     	}
     	return g+h<o.g+o.h;
     }
-	bool operator==(const Status &o)const
+    bool operator!=(const Status &o)const
+    {
+        return !(*this==o);
+    }
+    bool operator==(const Status &o)const
     {
     	if(h==-1)
     	{
 		    if(man!=o.man)return false;
-    		TreeSet<Point>::iterator i=box.begin(),j=o.box.begin();
+            set<Point>::iterator i=box.begin(),j=o.box.begin();
     		while(i!=box.end())
     		{
     		    if(*i!=*j)return false;

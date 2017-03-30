@@ -1,4 +1,5 @@
 #include "Game.h"
+#include <queue>
 
 const int Game::WALL=-1;
 const int Game::AIM=1;
@@ -36,15 +37,15 @@ Game::Game(int N,int M,string s):n(N),m(M)
                 switch(*it)
                 {
                 case '*':
-                    startStatus.box.push(Point(i,j));
+                    startStatus.box.insert(Point(i,j));
                     break;
                 case '0':
                     startStatus.man=Point(i,j);
                     break;
                 case '+':
-                    startStatus.box.push(Point(i,j)); //no break
+                    startStatus.box.insert(Point(i,j)); //no break
                 case '$':
-                    aim.push(Point(i,j));
+                    aim.push_back(Point(i,j));
                     isAim[i][j]=true;
                     break;
                 }
@@ -65,38 +66,32 @@ Game::~Game()
     delete[]mp;
 }
 
-const Vector<int>& Game::solve()
+void Game::goBack()
 {
-    rbtree<Status> ts;
-    TreeMap<Status,Status>searched;
+    if(oldStatus.empty())return;
+    mp[player.man.x][player.man.y]-=MAN;
+    for(set<Point>::iterator i=player.box.begin();i!=player.box.end();i++)
+        mp[i->x][i->y]-=BOX;
+    player=oldStatus.top();oldStatus.pop();
+    mp[player.man.x][player.man.y]+=MAN;
+    for(set<Point>::iterator i=player.box.begin();i!=player.box.end();i++)
+        mp[i->x][i->y]+=BOX;
+}
+
+const vector<int>& Game::solve()
+{
+    multiset<Status> ts;
+    map<Status,Status>searched;
     startStatus.h=-1;
-    searched.push(startStatus,startStatus);
+    searched.insert(make_pair(startStatus,startStatus));
     startStatus.h=minGH;
-    ts.push(startStatus);
-//    int cnt=0;
+    ts.insert(startStatus);
     while(ts.size())
     {
         if(minGH==-1)return ans;
-//        cnt++;
-//    		if(cnt%10000==0)printf("%d %d\n",cnt,ts.size());
-//    		printf("%d: ",ts.size());
-//    		for(rbtree<Status>::iterator it=ts.begin();it!=ts.end();it++)
-//    		{
-//
-//			    int cnt=0;
-//			    for(TreeSet<Point>::iterator j=it->box.begin();j!=it->box.end();j++)
-//			        if(isAim[j->x][j->y])
-//			            cnt++;
-//				printf("(%d,%d,%d)",it->man.x,it->man.y,cnt);
-//		    }
-//			printf("\n");
-        Status now(*ts.begin());ts.del(ts.begin());
+        Status now(*ts.begin());ts.erase(ts.begin());
         minGH=min(minGH,now.h);
         now.h=-1;now.g++;
-//    		        printf("(%d,%d):",now.man.x,now.man.y);
-//    				for(TreeSet<Point>::iterator it=now.box.begin();it!=now.box.end();it++)
-//    				    printf(" (%d,%d)",it->x,it->y);
-//    				printf("\n");
         for(int i=0;i<4;i++)
         {
             if(minGH==-1)return ans;
@@ -105,7 +100,7 @@ const Vector<int>& Game::solve()
             next.man.x+=mx[i];
             next.man.y+=my[i];
             if(wall[next.man.x][next.man.y])continue;
-            if(next.box.del(next.man))
+            if(next.box.erase(next.man))
             {
                 Point pushBox=next.man;
                 pushBox.x+=mx[i];
@@ -156,42 +151,33 @@ const Vector<int>& Game::solve()
                         if(wall[pushBox.x+mx[flag]+mx[flag^3]][pushBox.y+my[flag]+my[flag^3]])continue;
                     }
                 }/////////////////////////////////////////////////////////////////////////
-                next.box.push(pushBox);
+                next.box.insert(pushBox);
             }
             if(searched.find(next)!=searched.end())continue;
-            searched.push(next,now);
-            //printf("(%d,%d)",searched.find(next)->value.man.x,searched.find(next)->value.man.y);
+            searched.insert(make_pair(next,now));
             next.solveH();
-//    			int cnt=0;
-//				for(TreeSet<Point>::iterator j=next.box.begin();j!=next.box.end();j++)
-//			        if(isAim[j->x][j->y])
-//			            cnt++;
-//			    if(cnt==4)printf("(%d,%d,%d)\n",next.man.x,next.man.y,next.h);
             if(next.h==0)
             {
                 next.h=-1;
+                ans.resize(next.g);
                 for(int i=next.g-1;i>=0;i--)
                 {
                     ans[i]=next.pre;
-                    TreeMap<Status,Status>::iterator it=searched.find(next);
-//					    printf("(%d,%d)->(%d,%d)(%d,%d)\n",it->value.man.x,it->value.man.y,it->key.man.x,it->key.man.y,next.man.x,next.man.y);
-                    next=it->value;
+                    map<Status,Status>::iterator it=searched.find(next);
+                    next=it->second;
                 }
-//					cout<<cnt<<endl;
                 return ans;
             }
-//    				printf("    (%d,%d):",next.man.x,next.man.y);
-//    				for(TreeSet<Point>::iterator it=next.box.begin();it!=next.box.end();it++)
-//    				    printf(" (%d,%d)",it->x,it->y);
-//    				printf("\n");
-            ts.push(next);
+            ts.insert(next);
         }
     }
+    ans.resize(0);
     return ans;
 }
 
 void Game::restart()
 {
+    while(!oldStatus.empty())oldStatus.pop();
     player=startStatus;
     for(int i=0;i<n;i++)
     {
@@ -206,13 +192,13 @@ void Game::restart()
         }
     }
     mp[player.man.x][player.man.y]+=MAN;
-    for(TreeSet<Point>::iterator i=player.box.begin();i!=player.box.end();i++)
+    for(set<Point>::iterator i=player.box.begin();i!=player.box.end();i++)
         mp[i->x][i->y]+=BOX;
 }
 
 bool Game::isWin()
 {
-    for(TreeSet<Point>::iterator i=player.box.begin();i!=player.box.end();i++)
+    for(set<Point>::iterator i=player.box.begin();i!=player.box.end();i++)
         if(!isAim[i->x][i->y])
             return false;
     return true;
@@ -228,15 +214,81 @@ void Game::move(int k)
         Point pp(p.x+mx[k],p.y+my[k]);
         if(wall[pp.x][pp.y])return;
         if(player.box.find(pp)!=player.box.end())return;
+        oldStatus.push(player);
         mp[p.x][p.y]-=BOX;
-        player.box.del(p);
+        player.box.erase(p);
         mp[pp.x][pp.y]+=BOX;
-        player.box.push(pp);
+        player.box.insert(pp);
     }
+    else oldStatus.push(player);
     mp[player.man.x][player.man.y]-=MAN;
     player.man=p;
     mp[player.man.x][player.man.y]+=MAN;
     player.g++;
+}
+
+
+vector<int> Game::move(int x,int y)
+{
+    vector<int>v(0);
+    if(wall[x][y]||(player.man.x==x&&player.man.y==y))return v;
+    if(player.box.find(Point(x,y))!=player.box.end())
+    {
+        for(int i=0;i<4;i++)
+        {
+            if(x==player.man.x+mx[i]&&y==player.man.y+my[i])
+            {
+                v.push_back(i);
+                return v;
+            }
+        }
+        return v;
+    }
+
+    queue<Point>q;
+    int **searched=new int*[n];
+    for(int i=0;i<n;i++)
+    {
+        searched[i]=new int[m];
+        for(int j=0;j<m;j++)searched[i][j]=-1;
+    }
+    searched[player.man.x][player.man.y]=4;
+    q.push(player.man);
+    bool flag=false;
+    while(!q.empty())
+    {
+        Point now=q.front(),next;q.pop();
+        for(int i=0;i<4;i++)
+        {
+            next.x=now.x+mx[i];
+            next.y=now.y+my[i];
+            if(searched[next.x][next.y]!=-1)continue;
+            searched[next.x][next.y]=i;
+            if(wall[next.x][next.y]||player.box.find(next)!=player.box.end())continue;
+            if(next.x==x&&next.y==y)
+            {
+                flag=true;
+                break;
+            }
+            q.push(next);
+        }
+        if(flag)break;
+    }
+    if(searched[x][y]!=-1)
+    {
+        Point now(x,y);
+        while(searched[now.x][now.y]!=4)
+        {
+            int t=searched[now.x][now.y];
+            v.push_back(t);
+            now.x-=mx[t];
+            now.y-=my[t];
+        }
+        reverse(v.begin(),v.end());
+    }
+    for(int i=0;i<n;i++)delete[] searched[i];
+    delete[] searched;
+    return v;
 }
 
 int Game::getStep()
@@ -246,7 +298,7 @@ int Game::getStep()
 
 void Game::run()
 {
-    if(ans.getLength())
+    if(ans.size())
     {
         minGH=0;
         return;

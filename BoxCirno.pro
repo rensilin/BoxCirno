@@ -16,11 +16,7 @@ SOURCES += main.cpp\
     Game.cpp
 
 HEADERS  += mainwindow.h \
-    rbtree.h \
-    TreeMap.h \
-    TreeSet.h \
     Game.h \
-    Vector.h \
     Edge.h \
     KM.h \
     Point.h \

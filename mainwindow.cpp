@@ -14,12 +14,13 @@
 #include <QtCore>
 #include <QApplication>
 
-#include "Vector.h"
-
 using namespace std;
 
 const int BOXSIZE=60;
 const int MENUSIZE=23;
+const int PANELX=4*BOXSIZE;
+const int PANELY=MENUSIZE;
+const char title[]="一点也不奇怪的推箱子  v1.1.0";
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -39,12 +40,13 @@ MainWindow::MainWindow(QWidget *parent)
     manOnAimPixmap=manOnAimPixmap.scaled(BOXSIZE,BOXSIZE);
     boxPixmap=boxPixmap.scaled(BOXSIZE,BOXSIZE);
     boxOnAimPixmap=boxOnAimPixmap.scaled(BOXSIZE,BOXSIZE);
-    this->setWindowTitle("一点也不奇怪的推箱子  v1.0.1");
+    this->setWindowTitle(title);
     roundLabel=new QLabel(this);
     roundLabel->setAlignment(Qt::AlignCenter);
     stepLabel=new QLabel(this);
     nextBtn=new QPushButton(QString("下一关"),this);
     restartBtn=new QPushButton(QString("重新开始"),this);
+    goBackBtn=new QPushButton(QString("回退"),this);
     preBtn=new QPushButton(QString("上一关"),this);
 
     menu=menuBar()->addMenu(tr("选项"));
@@ -67,6 +69,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(action,SIGNAL(triggered()),this,SLOT(onActionClicked()));
     connect(nextBtn,SIGNAL(clicked()),this,SLOT(onNextBtnClicked()));
     connect(restartBtn,SIGNAL(clicked()),this,SLOT(onRestartBtnClicked()));
+    connect(goBackBtn,SIGNAL(clicked()),this,SLOT(onGoBackBtnClicked()));
     connect(preBtn,SIGNAL(clicked()),this,SLOT(onPreBtnClicked()));
 
     game=NULL;
@@ -103,7 +106,8 @@ bool MainWindow::loadGame(QString filename,QString qs)
     y+=BOXSIZE+BOXSIZE/2;
     preBtn->setGeometry(x,y,w,h);
     y+=BOXSIZE+BOXSIZE/2;
-    restartBtn->setGeometry(x,y,w,h);
+    restartBtn->setGeometry(x,y,w/2-2,h);
+    goBackBtn->setGeometry(x+restartBtn->width()+4,y,w/2-2,h);
     y+=BOXSIZE+BOXSIZE/2;
     nextBtn->setGeometry(x,y,w,h);
     y=(y+BOXSIZE+n*(BOXSIZE))/2-h/2+MENUSIZE/2;
@@ -129,17 +133,49 @@ MainWindow::~MainWindow()
     delete nextBtn;
     delete restartBtn;
     delete preBtn;
+    delete goBackBtn;
 }
 
-#define PAINT(pixmap) painter.drawPixmap((4+j)*BOXSIZE,MENUSIZE+i*BOXSIZE,BOXSIZE,BOXSIZE,pixmap)
+void MainWindow::nextStep()
+{
+    game->move(*showAnsIt);
+    showAnsIt++;
+    checkGame();
+    if(showAnsIt==showAns.end())
+    {
+        cnt=0;
+    }
+}
+
+void MainWindow::preStep()
+{
+    if(showAnsIt==showAns.begin())return;
+    game->goBack();
+    showAnsIt--;
+    checkGame();
+}
+
+#define PAINT(pixmap) painter.drawPixmap(PANELX+j*BOXSIZE,PANELY+i*BOXSIZE,BOXSIZE,BOXSIZE,pixmap)
 
 void MainWindow::paintEvent(QPaintEvent *)
 {
+    if(cnt==4)
+    {
+        QPalette pe;
+        pe.setColor(QPalette::WindowText,Qt::red);
+        stepLabel->setPalette(pe);
+    }
+    else
+    {
+        QPalette pe;
+        pe.setColor(QPalette::WindowText,Qt::black);
+        stepLabel->setPalette(pe);
+    }
     QPainter painter(this);
     QColor color(222,222,222);
     painter.setPen(color);
     painter.setBrush(QBrush(color,Qt::SolidPattern));
-    painter.drawRect(QRect(4*BOXSIZE,MENUSIZE,BOXSIZE*game->m,BOXSIZE*game->n));
+    painter.drawRect(QRect(PANELX,PANELY,BOXSIZE*game->m,BOXSIZE*game->n));
     for(int i=0;i<game->n;i++)
     {
         for(int j=0;j<game->m;j++)
@@ -154,14 +190,58 @@ void MainWindow::paintEvent(QPaintEvent *)
     }
 }
 
+
+void MainWindow::mousePressEvent(QMouseEvent *event)
+{
+    if(event->button()==Qt::LeftButton)//&&(event->buttons()&Qt::LeftButton))
+    {
+        if(cnt==4)
+        {
+            nextStep();
+            return;
+        }
+        int y=(event->pos().x()-PANELX)/BOXSIZE,x=(event->pos().y()-PANELY)/BOXSIZE;
+        if(x<0||x>=game->n||y<0||y>=game->m)return;
+        vector<int>v=game->move(x,y);
+        //setEnabled(false);
+        for(vector<int>::iterator i=v.begin();i!=v.end();i++)
+        {
+            game->move(*i);
+            QElapsedTimer timer;
+            timer.start();
+            while(timer.elapsed()<50)
+                QCoreApplication::processEvents();
+            checkGame();
+        }
+       //setEnabled(true);
+    }
+    else if(event->button()==Qt::RightButton)
+    {
+        if(cnt==4)
+        {
+            preStep();
+            return;
+        }
+        onGoBackBtnClicked();
+    }
+}
+
 void MainWindow::keyPressEvent(QKeyEvent *e)
 {
     if(cnt==4)
     {
-        if(e->key()==Qt::Key_Escape){killTimer(timerId);cnt=0;}
-        else if(e->key()=='Q')
+        switch(e->key())
         {
-                timerEvent((QTimerEvent*)NULL);
+        case Qt::Key_Escape:
+            cnt=0;
+            checkGame();
+            break;
+        case Qt::Key_Left:
+            preStep();
+            break;
+        case Qt::Key_Right:
+            nextStep();
+            break;
         }
         return;
     }
@@ -203,7 +283,6 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
             showAnsIt=showAns.begin();
             game->restart();
             checkGame();
-            timerId=startTimer(300);
             return;
         }
         else if(e->key()=='K')return;
@@ -216,30 +295,27 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 
     else cnt=0;
     switch (e->key()) {
-    case 'w':
     case 'W':
     case Qt::Key_Up:
         game->move(Game::UP);
         break;
-    case 's':
     case 'S':
     case Qt::Key_Down:
         game->move(Game::DOWN);
         break;
-    case 'a':
     case 'A':
     case Qt::Key_Left:
         game->move(Game::LEFT);
         break;
-    case 'd':
     case 'D':
     case Qt::Key_Right:
         game->move(Game::RIGHT);
         break;
-    case 'r':
     case 'R':
         onRestartBtnClicked();
         break;
+    case 'P':
+        onGoBackBtnClicked();
     }
     checkGame();
 }
@@ -280,7 +356,7 @@ void MainWindow::checkGame()
 void MainWindow::onNextBtnClicked()
 {
     if(cnt==4){
-        killTimer(timerId);
+        //killTimer(timerId);
         cnt=0;}
     round++;
     if(!loadGame())round--;
@@ -291,7 +367,7 @@ void MainWindow::onNextBtnClicked()
 void MainWindow::onRestartBtnClicked()
 {
     if(cnt==4){
-        killTimer(timerId);
+        //killTimer(timerId);
         cnt=0;}
     game->restart();
     checkGame();
@@ -301,7 +377,7 @@ void MainWindow::onRestartBtnClicked()
 void MainWindow::onPreBtnClicked()
 {
     if(cnt==4){
-        killTimer(timerId);
+        //killTimer(timerId);
         cnt=0;}
     round--;
     if(!loadGame())round++;
@@ -309,28 +385,16 @@ void MainWindow::onPreBtnClicked()
     setFocus();
 }
 
-void MainWindow::timerEvent(QTimerEvent *)
-{
-    mutex.lock();
-    if(cnt==0||showAnsIt==showAns.end())
-    {
-        mutex.unlock();
-        return;
-    }
-    game->move(*showAnsIt);
-    if(++showAnsIt==showAns.end())
-    {
-        killTimer(timerId);
-        cnt=0;
-    }
-    mutex.unlock();
+void MainWindow::onGoBackBtnClicked()
+{if(cnt==4)return;
+    game->goBack();
     checkGame();
 }
 
 void MainWindow::onActionClicked()
 {
     if(cnt==4){
-        killTimer(timerId);
+        //killTimer(timerId);
         cnt=0;}
     QString filename = QFileDialog::getOpenFileName(this,
                                                     tr("选择自定义地图"),
@@ -343,11 +407,13 @@ void MainWindow::onActionClicked()
 void MainWindow::showHelpInformation()
 {
     QMessageBox::information(NULL, "帮助",tr(
-                             "移动		方向键,WASD\n"
-                             "重新开始	R\n"
-                             "自动寻路	????(听说这个是神秘代码)\n"
-                             "加速寻路	Q\n"
-                             "停止寻路	Esc")
+                                 "移动		方向键,WASD,鼠标\n"
+                                 "重新开始	R\n"
+                                 "回退		P,鼠标右键\n"
+                                 "自动寻路	????(听说这个是神秘代码)\n"
+                                 "寻路上一步	右方向键，鼠标左键\n"
+                                 "寻路下一步	左方向键，鼠标右键\n"
+                                 "停止寻路	Esc\n")
                              , QMessageBox::Yes);
 }
 void MainWindow::showAboutInformation()
@@ -356,7 +422,7 @@ void MainWindow::showAboutInformation()
                              "作者: kkke  (输入这个可能会有神秘事件发生)\n"
                              "邮箱: kkke@nwsuaf.edu.cn\n"
                              "CSDN博客:http://blog.csdn.net/tookkke\n"
-                             "本游戏是kkke的课程设计，不能用于商业用途\n"
+                             "本游戏始于kkke的课程设计，不能用于商业用途\n"
                              "详见帮助文档")
                              , QMessageBox::Yes);
 }

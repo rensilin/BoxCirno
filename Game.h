@@ -4,10 +4,9 @@
 #include <QThread>
 #include <QProgressDialog>
 #include "Status.h"
-#include "TreeMap.h"
-#include "Vector.h"
+#include <stack>
 
-using std::string;
+using namespace std;
 
 class Game : public QThread
 {
@@ -35,15 +34,18 @@ public:
     int minGH;
     const int n;
     const int m;
-	Vector<Point> aim;
+    vector<Point> aim;
+    stack<Status> oldStatus;
     Game(int N,int M,string s);
     ~Game();
-    Vector<int> ans;
-    const Vector<int>& solve();
+    vector<int> ans;
+    const vector<int>& solve();
     void restart();
     int getH();
     bool isWin();
     void move(int k);
+    void goBack();
+    vector<int> move(int x,int y);
     void run();
     int getStep();
 };

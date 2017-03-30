@@ -1,6 +1,5 @@
 #ifndef KM_H                                     //2017.1.5
 #define KM_H
-#include "Vector.h"
 #include "Edge.h"
 #include <iostream>
 
@@ -11,7 +10,7 @@ using namespace std;
 class KM{
 private:
 	int n;
-	Vector<Edge> *edge;
+    vector<Edge> *edge;
 	int *from;
 	int *X;
 	int *Y;
@@ -26,7 +25,7 @@ private:
 		    from[i]=-1;
 		    Y[i]=0;
 		    X[i]=-INF;
-		    for(Vector<Edge>::iterator j=edge[i].begin();j!=edge[i].end();j++)
+            for(vector<Edge>::iterator j=edge[i].begin();j!=edge[i].end();j++)
 		    {
 		    	X[i]=max(X[i],j->v);
 		    }
@@ -37,7 +36,7 @@ private:
 	bool dfs(int nown)
 	{
 		L[nown]=true;
-		for(Vector<Edge>::iterator i=edge[nown].begin();i!=edge[nown].end();i++)
+        for(vector<Edge>::iterator i=edge[nown].begin();i!=edge[nown].end();i++)
 		{
 		    if(X[nown]+Y[i->to]<i->v)
 			{
@@ -69,7 +68,7 @@ public:
 			int d=INF;
 			for(int i=0;i<n;i++)
 				if(L[i])
-					for(Vector<Edge>::iterator j=edge[i].begin();j!=edge[i].end();j++)
+                    for(vector<Edge>::iterator j=edge[i].begin();j!=edge[i].end();j++)
 						if(!R[j->to])
 					    	d=min(d,X[i]+Y[j->to]-j->v);
 			ans-=d;
@@ -87,7 +86,7 @@ public:
 	{
 		ans=INF;
 		n=N;
-		edge=new Vector<Edge>[n];
+        edge=new vector<Edge>[n];
 		from=new int[n];
 		X   =new int[n];
 		Y   =new int[n];
@@ -95,7 +94,7 @@ public:
 		R   =new bool[n];
 	}
 	~KM()
-	{
+    {
 		delete[] edge;
 		delete[] from;
 		delete[] X;
@@ -106,7 +105,7 @@ public:
 	
 	void add_edge(int a,int b,int v)
 	{
-		edge[a].push(Edge(b,v));
+        edge[a].push_back(Edge(b,v));
 	}
 	
 	int getFrom(int y)
