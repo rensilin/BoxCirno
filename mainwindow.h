@@ -33,7 +33,6 @@ public:
     void mousePressEvent(QMouseEvent *event);
     ~MainWindow();
     friend class Game;
-    QMutex mutex;
 private:
     QPixmap wallPixmap;
     QPixmap aimPixmap;
@@ -48,6 +47,7 @@ private:
     QPushButton *preBtn;
     QPushButton *goBackBtn;
     QMenu *menu;
+    QMutex mutex;
     int round;
     int cnt;
     int timerId;

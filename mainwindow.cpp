@@ -6,12 +6,12 @@
 #include <QFont>
 #include <QPainter>
 #include <QColor>
-#include <Qtimer>
 #include <QAction>
 #include <QProgressDialog>
 #include <QFileDialog>
 #include <QCoreApplication>
 #include <QtCore>
+#include <QFontDatabase>
 #include <QApplication>
 
 using namespace std;
@@ -20,7 +20,7 @@ const int BOXSIZE=60;
 const int MENUSIZE=23;
 const int PANELX=4*BOXSIZE;
 const int PANELY=MENUSIZE;
-const char title[]="一点也不奇怪的推箱子  v1.1.0";
+const char title[]="一点也不奇怪的推箱子  v1.1.1";
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -95,6 +95,7 @@ bool MainWindow::loadGame(QString filename,QString qs)
     }
 //    cout<<n<<' '<<m<<"\n"<<s<<endl;
     game=new Game(n,m,s);
+    repaint();
     setFixedSize(BOXSIZE*(m+4),MENUSIZE+BOXSIZE*n);
     QFont font;font.setPointSize(BOXSIZE/2);
     int x=BOXSIZE/2,y=MENUSIZE+BOXSIZE/2;
@@ -193,41 +194,39 @@ void MainWindow::paintEvent(QPaintEvent *)
 
 void MainWindow::mousePressEvent(QMouseEvent *event)
 {
+    QMutexLocker locker(&mutex);
     if(event->button()==Qt::LeftButton)//&&(event->buttons()&Qt::LeftButton))
     {
-        if(cnt==4)
+        if(cnt==4)nextStep();
+        else
         {
-            nextStep();
-            return;
+            int y=(event->pos().x()-PANELX)/BOXSIZE,x=(event->pos().y()-PANELY)/BOXSIZE;
+            if(x<0||x>=game->n||y<0||y>=game->m)return;
+            vector<int>v=game->move(x,y);
+            //setEnabled(false);
+            for(vector<int>::iterator i=v.begin();i!=v.end();i++)
+            {
+               game->move(*i);
+               QElapsedTimer timer;
+               timer.start();
+               while(timer.elapsed()<50);
+                   //QCoreApplication::processEvents();
+               checkGame();
+            }
+            //setEnabled(true);
         }
-        int y=(event->pos().x()-PANELX)/BOXSIZE,x=(event->pos().y()-PANELY)/BOXSIZE;
-        if(x<0||x>=game->n||y<0||y>=game->m)return;
-        vector<int>v=game->move(x,y);
-        //setEnabled(false);
-        for(vector<int>::iterator i=v.begin();i!=v.end();i++)
-        {
-            game->move(*i);
-            QElapsedTimer timer;
-            timer.start();
-            while(timer.elapsed()<50)
-                QCoreApplication::processEvents();
-            checkGame();
-        }
-       //setEnabled(true);
+
     }
     else if(event->button()==Qt::RightButton)
     {
-        if(cnt==4)
-        {
-            preStep();
-            return;
-        }
-        onGoBackBtnClicked();
+        if(cnt==4)preStep();
+        else onGoBackBtnClicked();
     }
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *e)
 {
+    QMutexLocker locker(&mutex);
     if(cnt==4)
     {
         switch(e->key())
@@ -322,7 +321,7 @@ void MainWindow::keyPressEvent(QKeyEvent *e)
 
 void MainWindow::checkGame()
 {
-    update();
+    repaint();
     QString s;
     stepLabel->setText("步数: "+s.setNum(game->getStep()));
     if(game->isWin())
@@ -407,10 +406,10 @@ void MainWindow::onActionClicked()
 void MainWindow::showHelpInformation()
 {
     QMessageBox::information(NULL, "帮助",tr(
-                                 "移动		方向键,WASD,鼠标\n"
+                                 "移动	方向键,WASD,鼠标\n"
                                  "重新开始	R\n"
-                                 "回退		P,鼠标右键\n"
-                                 "自动寻路	????(听说这个是神秘代码)\n"
+                                 "回退	P,鼠标右键\n"
+                                 "自动寻路	(听说这个是神秘代码)\n"
                                  "寻路上一步	右方向键，鼠标左键\n"
                                  "寻路下一步	左方向键，鼠标右键\n"
                                  "停止寻路	Esc\n")

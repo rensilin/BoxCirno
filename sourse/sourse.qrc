@@ -45,5 +45,6 @@
         <file>image/cirnoOnAim.png</file>
         <file>icon/cirno.ico</file>
         <file>icon/icon.rc</file>
+        <file>font/loli.ttf</file>
     </qresource>
 </RCC>
