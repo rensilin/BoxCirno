@@ -26,5 +26,3 @@ RESOURCES += \
     sourse/sourse.qrc
 
 RC_ICONS = sourse/icon/cirno.ico
-
-CONFIG +=static
